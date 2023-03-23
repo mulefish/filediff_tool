@@ -1,0 +1,193 @@
+<html>
+
+<head>
+    <link rel="icon" href="data:;base64,=">
+    <style>
+        #nudge {
+            margin-left: 20px;
+            margin-top: 20px;
+        }
+
+        .content {
+            width: 100%;
+        }
+
+        .pane {
+            width: 700px;
+            height: 700px;
+            background-color: white;
+            overflow: scroll;
+        }
+
+
+        .num {
+            /* Make the numbers column's text be unselectable */
+            -webkit-touch-callout: none;
+            /* iOS */
+            -webkit-user-select: none;
+            /* safari */
+            -khtml-user-select: none;
+            /* konqueror */
+            -moz-user-select: none;
+            /* firefox */
+            -ms-user-select: none;
+            /* ms edge */
+            user-select: none;
+            /* chrome and opera */
+        }
+
+        .same {
+            background-color: #ADFF2F;
+            width: 100%;
+        }
+
+        .onlyLeft {
+            background-color: #cbe39c;
+            width: 100%;
+        }
+
+        .onlyRight {
+
+            background-color: #f4e588;
+            width: 100%;
+
+
+        }
+    </style>
+    <script>
+        function splitString(line) {
+            const matches = line.match(/^(\s*)(.*)$/);
+            const whitespace = matches[1];
+            const theRest = matches[2];
+            let nonbreakingSpaces = whitespace.replace(/\s/g, '&nbsp;&nbsp;');
+            nonbreakingSpaces = nonbreakingSpaces.replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;');
+            const obj = {
+                "whitespace": nonbreakingSpaces,
+                "theRest": theRest
+            }
+            return obj
+        }
+
+
+        let left_seen = {}
+        let right_seen = {}
+        let left_ary = []
+        let right_ary = []
+        let left_whitespace_ary = []
+        let right_whitespace_ary = []
+        let loaded = 0
+        function getFile(fileName, whichSide, map, ary, whiteSpaceArray) {
+            var rawFile = new XMLHttpRequest(); // Hrm, seems that this is depreciated.
+            rawFile.open("GET", fileName, false);
+            rawFile.onreadystatechange = function () {
+                if (rawFile.readyState === 4) {
+                    if (rawFile.status === 200 || rawFile.status == 0) {
+                        let x = rawFile.responseText;
+                        let lines = x.split(/\r?\n/)
+
+                        lines.forEach((line) => {
+                            // line = line.trim()
+                            const this_and_that = splitString(line)
+                            const whiteSpace = this_and_that.whitespace
+                            const theRest = this_and_that.theRest
+                            if (map.hasOwnProperty(theRest)) {
+                                map[theRest]++
+                            } else {
+                                map[theRest] = 1
+                            }
+                            ary.push(theRest)
+                            whiteSpaceArray.push(whiteSpace)
+                        })
+                        document.getElementById(whichSide).innerHTML = "READY with " + fileName
+                        loaded++
+                        if (loaded >= 2) {
+                            doCompare()
+                        }
+                    }
+                }
+            }
+            rawFile.send(null);
+        }
+        function doCompare() {
+            // left side
+            let l_table = "<table>"
+            left_ary.forEach((line, i) => {
+                let css = "onlyLeft"
+                if (right_seen.hasOwnProperty(line)) {
+                    css = "same"
+                }
+                line = line.split('  ').join('&nbsp;&nbsp');
+                let num = "<td><div class=num>" + i + "&nbsp;&nbsp;</div></td>"
+                let l = "<td>" + left_whitespace_ary[i] + "<code class='" + css + "'>" + line + "  </code></td>"
+                let row = "<tr>" + num + l + "</tr>"
+                l_table += row
+            })
+            document.getElementById("left").innerHTML = l_table
+
+            // right side
+            let r_table = "<table>"
+            right_ary.forEach((line, i) => {
+                let css = "onlyRight"
+                if (left_seen.hasOwnProperty(line)) {
+                    css = "same"
+                }
+                line = line.split('  ').join('&nbsp;&nbsp');
+                let num = "<td><div class=num>" + i + "&nbsp;&nbsp;</div></td>" 
+                let l = "<td>" + right_whitespace_ary[i] + "<code class='" + css + "'>" + line + "  </code></td>"
+                let row = "<tr>" + num + l + "</tr>"
+                r_table += row
+            })
+            document.getElementById("right").innerHTML = r_table
+        }
+    </script>
+</head>
+
+<body>
+    <div id='nudge'>
+        <table id="content" border="1">
+            <tr>
+                <td>
+                    <input type="file" id="file1" />
+                    <div id='leftFile'></div>
+                </td>
+                <td>
+                    <input type="file" id="file2" />
+                    <div id='rightFile'></div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <div class="pane" id="left"></div>
+                </td>
+                <td>
+                    <div class="pane" id="right"></div>
+                </td>
+            </tr>
+        </table>
+
+        <hr>
+        <br> Choose two files... ...it will see if the lines are the same or only left side or only right side.
+        <br>NOTE: This is only helpful when the files are nearly the same...
+        <br>NOTE2: I wish macos had WinMerge - This is a poor man's version of that.
+    </div>
+
+    <script>
+        function leftFile(evt) {
+            left_seen = {}
+            left_ary = []
+            let fileName = evt.target.files[0].name;
+            getFile(fileName, "left", left_seen, left_ary, left_whitespace_ary)
+        }
+        function rightFile(evt) {
+            right_seen = {}
+            right_ary = []
+            let fileName = evt.target.files[0].name;
+            getFile(fileName, "right", right_seen, right_ary, right_whitespace_ary)
+        }
+        document.getElementById('file1').addEventListener('change', leftFile, false);
+        document.getElementById('file2').addEventListener('change', rightFile, false);
+    </script>
+
+</body>
+
+</html>
